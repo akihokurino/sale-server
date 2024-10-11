@@ -1,0 +1,19 @@
+{
+  "name": "crawler-amazon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "crawl_product_list": "ts-node crawl_product_list.ts",
+    "crawl_product_detail": "ts-node crawl_product_detail.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/puppeteer": "^7.0.4",
+    "puppeteer": "^22.13.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
