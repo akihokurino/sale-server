@@ -17,6 +17,13 @@ impl Kind {
         }
     }
 
+    pub fn withf<T>(self) -> impl FnOnce(T) -> AppError
+    where
+        T: Into<String>,
+    {
+        move |v| self.with(v)
+    }
+
     pub fn from_src(self, src: impl std::error::Error + Send + Sync + 'static) -> AppError {
         AppError {
             kind: self,
@@ -50,3 +57,20 @@ impl derive_more::Display for AppError {
         )
     }
 }
+impl From<Kind> for AppError {
+    fn from(kind: Kind) -> Self {
+        Self { kind, msg: None }
+    }
+}
+
+macro_rules! impl_from_err_to_app_internal_err {
+    ($T:ty) => {
+        impl From<$T> for crate::errors::AppError {
+            fn from(v: $T) -> Self {
+                crate::errors::Kind::Internal.from_src(v)
+            }
+        }
+    };
+}
+#[allow(unused)]
+pub(crate) use impl_from_err_to_app_internal_err;
