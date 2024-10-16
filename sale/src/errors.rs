@@ -1,8 +1,7 @@
-use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Display, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, derive_more::Display, Serialize, Deserialize)]
 pub enum Kind {
     BadRequest,
     Unauthorized,
@@ -38,7 +37,7 @@ pub struct AppError {
     pub kind: Kind,
     pub msg: Option<String>,
 }
-impl Display for AppError {
+impl derive_more::Display for AppError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
