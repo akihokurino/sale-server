@@ -14,19 +14,28 @@ impl<T> MustPresent<T> for Option<T> {
     }
 }
 
-trait AttrConv {
-    fn must_s(self) -> Result<String, String>;
-    fn from_s(s: &str) -> AttributeValue;
+trait FromAttr {
+    fn to_s(self) -> Result<String, String>;
 }
-impl AttrConv for AttributeValue {
-    fn must_s(self) -> Result<String, String> {
+impl FromAttr for AttributeValue {
+    fn to_s(self) -> Result<String, String> {
         self.as_s()
             .map(|v| v.to_string())
             .map_err(move |_| "cannot convert".to_string())
     }
+}
 
-    fn from_s(s: &str) -> AttributeValue {
-        AttributeValue::S(s.to_string())
+trait ToAttr {
+    fn into_attr(self) -> AttributeValue;
+}
+impl ToAttr for String {
+    fn into_attr(self) -> AttributeValue {
+        AttributeValue::S(self)
+    }
+}
+impl ToAttr for &str {
+    fn into_attr(self) -> AttributeValue {
+        AttributeValue::S(self.to_string())
     }
 }
 
@@ -34,28 +43,49 @@ impl<E> Id<E> {
     pub fn typename() -> &'static str {
         std::any::type_name::<E>()
     }
-}
 
-pub(crate) trait HasTableName {
-    fn table_name() -> String;
+    pub fn sk() -> &'static str {
+        "#"
+    }
+}
+impl<E> Into<AttributeValue> for Id<E> {
+    fn into(self) -> AttributeValue {
+        AttributeValue::S(format!("{}#{}", Self::typename(), self.as_str()))
+    }
+}
+impl<E> TryFrom<AttributeValue> for Id<E> {
+    type Error = String;
+
+    fn try_from(value: AttributeValue) -> Result<Self, Self::Error> {
+        let v = value.to_s()?;
+        let v = v
+            .strip_prefix(Self::typename())
+            .ok_or_else(|| "invalid id".to_string())?;
+        Ok(Self::new(v))
+    }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TableNameProvider {
+pub struct TableNameProvider {
     prefix: String,
 }
 impl TableNameProvider {
     pub fn new(prefix: String) -> Self {
         Self { prefix }
     }
+
     pub fn get(&self, basename: &str) -> String {
         format!("{}{}", self.prefix, basename)
     }
 }
 
+pub trait HasTableName {
+    fn table_name() -> String;
+}
+
 #[derive(Clone, Debug)]
 pub struct TableRepository<E> {
-    pub(crate) cli: aws_sdk_dynamodb::Client,
+    cli: aws_sdk_dynamodb::Client,
     table_name_provider: TableNameProvider,
     _phantom: PhantomData<fn() -> E>,
 }
@@ -65,10 +95,7 @@ impl<E: HasTableName> TableRepository<E> {
     }
 }
 impl<E> TableRepository<E> {
-    pub(crate) fn new(
-        cli: aws_sdk_dynamodb::Client,
-        table_name_provider: TableNameProvider,
-    ) -> Self {
+    pub fn new(cli: aws_sdk_dynamodb::Client, table_name_provider: TableNameProvider) -> Self {
         Self {
             cli,
             table_name_provider,

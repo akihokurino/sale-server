@@ -1,6 +1,6 @@
 use crate::domain::product::{Id, Product, Source};
 use crate::errors::Kind::{Internal, NotFound};
-use crate::infra::aws::dynamo::{AttrConv, HasTableName, MustPresent, TableRepository};
+use crate::infra::aws::dynamo::{FromAttr, HasTableName, MustPresent, TableRepository, ToAttr};
 use crate::AppResult;
 use aws_sdk_dynamodb::types::AttributeValue;
 use std::collections::HashMap;
@@ -9,13 +9,12 @@ use std::str::FromStr;
 impl TryFrom<HashMap<String, AttributeValue>> for Product {
     type Error = String;
     fn try_from(mut v: HashMap<String, AttributeValue>) -> Result<Self, Self::Error> {
-        let id = v.remove("pk").must_present()?.must_s()?;
-        let source = Source::from_str(&v.remove("source").must_present()?.must_s()?)
+        let source = Source::from_str(&v.remove("source").must_present()?.to_s()?)
             .map_err(|_| "invalid source")?;
-        let detail_url = v.remove("detailUrl").must_present()?.must_s()?;
+        let detail_url = v.remove("detailUrl").must_present()?.to_s()?;
 
         Ok(Self {
-            id: Id::from(id),
+            id: v.remove("pk").must_present()?.try_into()?,
             source,
             detail_url: url::Url::parse(&detail_url).map_err(|_| "invalid url")?,
             title: None,
@@ -31,13 +30,10 @@ impl TryFrom<HashMap<String, AttributeValue>> for Product {
 impl Into<HashMap<String, AttributeValue>> for Product {
     fn into(self) -> HashMap<String, AttributeValue> {
         [
-            ("pk", Some(AttributeValue::from_s(self.id.as_str()))),
-            ("sk", Some(AttributeValue::from_s("#"))),
-            (
-                "source",
-                Some(AttributeValue::from_s(&self.source.to_string())),
-            ),
-            ("glk", Some(AttributeValue::from_s(Id::typename()))),
+            ("pk", Some(self.id.into())),
+            ("sk", Some(Id::sk().into_attr())),
+            ("source", Some(self.source.to_string().into_attr())),
+            ("glk", Some(Id::typename().into_attr())),
         ]
         .into_iter()
         .flat_map(|(k, v)| v.map(|v| (k.into(), v)))
@@ -58,8 +54,8 @@ impl Repository {
             .get_item()
             .table_name(self.table_name())
             .set_key(Some(HashMap::from([
-                ("pk".into(), AttributeValue::from_s(id.as_str())),
-                ("sk".into(), AttributeValue::from_s("#")),
+                ("pk".into(), id.as_str().into_attr()),
+                ("sk".into(), Id::sk().into_attr()),
             ])))
             .send()
             .await?;
