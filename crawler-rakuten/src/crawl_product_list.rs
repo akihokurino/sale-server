@@ -1,9 +1,10 @@
 use reqwest::Client;
+use sale::errors::Kind::Internal;
+use sale::AppResult;
 use scraper::{Html, Selector};
-use std::error::Error;
 use tokio::time::{sleep, Duration};
 
-pub async fn crawl() -> Result<(), Box<dyn Error>> {
+pub async fn crawl() -> AppResult<()> {
     let mut page = 1;
     loop {
         let url = format!(
@@ -30,8 +31,15 @@ pub async fn crawl() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn collect(url: &str) -> Result<Vec<Product>, Box<dyn Error>> {
-    let body = Client::new().get(url).send().await?.text().await?;
+async fn collect(url: &str) -> AppResult<Vec<Product>> {
+    let body = Client::new()
+        .get(url)
+        .send()
+        .await
+        .map_err(Internal.from_srcf())?
+        .text()
+        .await
+        .map_err(Internal.from_srcf())?;
     let document = Html::parse_document(&body);
 
     let item_selector = Selector::parse(".searchresultitems .searchresultitem").unwrap();
@@ -40,17 +48,21 @@ async fn collect(url: &str) -> Result<Vec<Product>, Box<dyn Error>> {
 
     let mut products: Vec<Product> = vec![];
     for element in document.select(&item_selector) {
-        let url = element
+        let e_ref = element
             .select(&url_selector)
             .next()
-            .map(|e| e.value().attr("href").unwrap_or("").to_string())
-            .unwrap_or_default();
+            .ok_or(Internal.with("URLが見つかりませんでした"))?;
+        let url = e_ref
+            .value()
+            .attr("href")
+            .ok_or(Internal.with("URLが見つかりませんでした"))?
+            .to_string();
 
-        let points = element
+        let e_ref = element
             .select(&points_selector)
             .next()
-            .map(|e| e.text().collect::<Vec<_>>().concat().trim().to_string())
-            .unwrap_or_default();
+            .ok_or(Internal.with("ポイントが見つかりませんでした"))?;
+        let points = e_ref.text().collect::<Vec<_>>().concat().trim().to_string();
 
         if !url.is_empty() {
             products.push(Product { url, points });

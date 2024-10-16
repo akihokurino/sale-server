@@ -5,7 +5,9 @@ mod crawl_product_list;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    crawl_product_detail::crawl().await?;
+    if let Err(err) = crawl_product_detail::crawl().await {
+        eprintln!("error: {}", err);
+    }
 
     Ok(())
 }
