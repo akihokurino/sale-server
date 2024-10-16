@@ -44,7 +44,6 @@ impl Into<HashMap<String, AttributeValue>> for Product {
         .collect()
     }
 }
-
 impl HasTableName for Product {
     fn table_name() -> String {
         "product".to_string()

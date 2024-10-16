@@ -23,10 +23,6 @@ impl<E> Id<E> {
     pub fn as_str(&self) -> &str {
         self.id.as_str()
     }
-
-    pub fn to_string(&self) -> String {
-        self.id.clone()
-    }
 }
 impl<E> From<String> for Id<E> {
     fn from(id: String) -> Self {
