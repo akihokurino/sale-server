@@ -1,6 +1,6 @@
 use crate::domain::product::{Id, Product, Source};
 use crate::errors::Kind::{Internal, NotFound};
-use crate::infra::aws::dynamo::{FromAttr, HasTableName, MustPresent, TableRepository, ToAttr};
+use crate::infra::aws::ddb::{FromAttr, HasTableName, MustPresent, TableRepository, ToAttr};
 use crate::AppResult;
 use aws_sdk_dynamodb::types::AttributeValue;
 use std::collections::HashMap;

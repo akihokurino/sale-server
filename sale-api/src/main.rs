@@ -3,14 +3,22 @@ use actix_web::web::Data;
 use actix_web::{guard, web, App, HttpRequest, HttpResponse, HttpServer};
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
+use sale::di;
 
 mod graphql;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let service_http_handler = graphql::service::HttpHandler::new().await;
-    let is_prod = false;
-    let with_lambda = false;
+    di::SSM_ADAPTER
+        .get()
+        .await
+        .load_dotenv()
+        .await
+        .expect("failed to load ssm parameter store");
+
+    let envs = di::ENVIRONMENTS.clone();
+    let service_http_handler = graphql::service::HttpHandler::new(&envs).await;
+    let is_prod = envs.is_prod();
 
     let app_factory = move || {
         let mut app = App::new()
@@ -39,14 +47,14 @@ async fn main() -> std::io::Result<()> {
         app
     };
 
-    if with_lambda {
+    if envs.with_lambda {
         lambda_web::run_actix_on_lambda(app_factory)
             .await
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
     } else {
-        println!("listen as http server on port {}", 4000);
+        println!("listen as http server on port {}", envs.port);
         HttpServer::new(app_factory)
-            .bind(format!("127.0.0.1:{}", 4000))?
+            .bind(format!("127.0.0.1:{}", envs.port))?
             .run()
             .await
     }

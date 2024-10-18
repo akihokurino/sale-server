@@ -13,9 +13,10 @@ aws-sdk-dynamodb = "1.50.0"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = { version = "1.0.128" }
 derive_more = { version = "1", features = ["full"] }
-reqwest = { version = "0.12.8", features = ["blocking", "rustls-tls", "json"] }
 url = "2.5.2"
 strum = "0.26.1"
 strum_macros = "0.26.4"
 base-62 = "0.1.1"
 rand = "0.8.5"
+once_cell = "1.20.2"
+dotenv-parser = "0.1.3"

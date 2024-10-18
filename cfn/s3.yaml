@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  EnvName:
+    Description: environment group (resource group identifier)
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+
+Resources:
+  UserdataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub ${EnvName}-sale-userdata
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods:
+              - HEAD
+              - GET
+              - PUT
+              - POST
+              - DELETE
+            AllowedOrigins:
+              - '*'
+            AllowedHeaders:
+              - '*'
+            ExposedHeaders:
+              - Etag
+              - x-amz-meta-custom-header
+            MaxAge: 3000
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: false
+        BlockPublicPolicy: false
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldObjects
+            Status: Enabled
+            Prefix: tmp/
+            ExpirationInDays: 3
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+  UserdataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    Properties:
+      Bucket:
+        Ref: UserdataBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - s3:GetObject
+            Effect: Allow
+            Resource:
+              - Fn::Sub: arn:aws:s3:::${UserdataBucket}/public/*
+            Principal: '*'

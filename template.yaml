@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform:
+  - AWS::LanguageExtensions
+  - AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Timeout: 300
+
+Parameters:
+  EnvName:
+    Type: String
+  ApiDomainName:
+    Type: String
+  HostedZoneName:
+    Type: String
+  CertificateArn:
+    Type: String
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: bootstrap.is.real.handler
+      Runtime: provided.al2
+      MemorySize: 128
+      Tracing: Active
+      Events:
+        ProxyApiRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /
+            Method: ANY
+        ProxyApiGreedy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /{proxy+}
+            Method: ANY
+      Environment:
+        Variables:
+          WITH_LAMBDA: "true"
+          SSM_DOTENV_PARAMETER_NAME: !Sub /sale/${EnvName}/server/dotenv
+      Policies:
+        - AmazonSSMReadOnlyAccess
+        - AmazonDynamoDBFullAccess
+        - AmazonS3FullAccess
+    Metadata:
+      BuildMethod: makefile
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: default
+      BinaryMediaTypes:
+        - "*/*"
+      Domain:
+        EndpointConfiguration: REGIONAL
+        DomainName: !Ref ApiDomainName
+        Route53:
+          HostedZoneName: !Ref HostedZoneName
+        CertificateArn: !Ref CertificateArn
+
+  CrawlerRakutenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: bootstrap.is.real.handler
+      Runtime: provided.al2
+      MemorySize: 128
+      Tracing: Active
+      Environment:
+        Variables:
+          SSM_DOTENV_PARAMETER_NAME: !Sub /sale/${EnvName}/server/dotenv
+      Policies:
+        - AmazonSSMReadOnlyAccess
+        - AmazonDynamoDBFullAccess
+        - AmazonS3FullAccess
+    Metadata:
+      BuildMethod: makefile

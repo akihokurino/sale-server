@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  EnvName:
+    Description: environment group (resource group identifier)
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+
+Resources:
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${EnvName}-sale-user
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: lsk
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: N
+      BillingMode: PAY_PER_REQUEST
+      LocalSecondaryIndexes:
+        - IndexName: pk-lsk-index
+          KeySchema:
+            - AttributeName: pk
+              KeyType: HASH
+            - AttributeName: lsk
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      GlobalSecondaryIndexes:
+        - IndexName: sk-createdAt-index
+          KeySchema:
+            - AttributeName: sk
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+  ProductTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${EnvName}-sale-product
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: lsk
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: N
+      BillingMode: PAY_PER_REQUEST
+      LocalSecondaryIndexes:
+        - IndexName: pk-lsk-index
+          KeySchema:
+            - AttributeName: pk
+              KeyType: HASH
+            - AttributeName: lsk
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      GlobalSecondaryIndexes:
+        - IndexName: sk-createdAt-index
+          KeySchema:
+            - AttributeName: sk
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
