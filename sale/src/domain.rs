@@ -2,6 +2,7 @@ use rand::random;
 use std::marker::PhantomData;
 
 pub mod product;
+pub mod user;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct Id<E> {
@@ -27,6 +28,11 @@ impl<E> Id<E> {
 impl<E> From<String> for Id<E> {
     fn from(id: String) -> Self {
         Self::new(id)
+    }
+}
+impl<E> Into<String> for Id<E> {
+    fn into(self) -> String {
+        self.id
     }
 }
 
