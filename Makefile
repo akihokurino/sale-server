@@ -37,13 +37,17 @@ crawl-amazon-product-detail:
 
 .PHONY: run-local
 run-local:
-	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv cargo run --bin sale-api
+	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin sale-api
+
+.PHONY: run-local
+run-local-crawl-rakuten-product-list:
+	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin crawler-rakuten -- CrawlList "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1"
 
 .PHONY: run-dev-crawl-rakuten-product-list
 run-dev-crawl-rakuten-product-list:
 	aws lambda invoke \
-      	--function-name dev-sale-server-CrawlerRakutenFunction-9wTK8uK5AIkC \
-    	--payload '{"task":"CrawlList"}' \
+      	--function-name dev-sale-server-CrawlerRakutenFunction-GYPU6RLBMK5G \
+    	--payload '{"task":"CrawlList", "url": "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1"}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
     	/dev/null
@@ -51,7 +55,7 @@ run-dev-crawl-rakuten-product-list:
 .PHONY: run-dev-crawl-rakuten-product-detail
 run-dev-crawl-rakuten-product-detail:
 	aws lambda invoke \
-      	--function-name dev-sale-server-CrawlerRakutenFunction-9wTK8uK5AIkC \
+      	--function-name dev-sale-server-CrawlerRakutenFunction-GYPU6RLBMK5G \
     	--payload '{"task":"CrawlDetail"}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \

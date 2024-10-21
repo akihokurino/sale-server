@@ -1,6 +1,8 @@
 use crate::domain::product::{Id, Product, Source};
 use crate::errors::Kind::{Internal, NotFound};
-use crate::infra::aws::ddb::{FromAttr, HasTableName, MustPresent, TableRepository, ToAttr};
+use crate::infra::aws::ddb::{
+    FromAttr, HasTableName, MustPresent, TableRepository, ToAttr, Typename,
+};
 use crate::AppResult;
 use aws_sdk_dynamodb::types::AttributeValue;
 use std::collections::HashMap;
@@ -23,7 +25,7 @@ impl TryFrom<HashMap<String, AttributeValue>> for Product {
             actual_price: None,
             retail_off: None,
             breadcrumb: vec![],
-            points: None,
+            points: Some(v.remove("points").must_present()?.to_s()?),
         })
     }
 }
@@ -33,7 +35,9 @@ impl Into<HashMap<String, AttributeValue>> for Product {
             ("pk", Some(self.id.into())),
             ("sk", Some(Id::sk().into_attr())),
             ("source", Some(self.source.to_string().into_attr())),
-            ("glk", Some(Id::typename().into_attr())),
+            ("detailUrl", Some(self.detail_url.to_string().into_attr())),
+            ("points", self.points.map(|v| v.into_attr())),
+            ("glk", Some(Product::typename().into_attr())),
         ]
         .into_iter()
         .flat_map(|(k, v)| v.map(|v| (k.into(), v)))
@@ -45,6 +49,11 @@ impl HasTableName for Product {
         "product".to_string()
     }
 }
+impl Typename for Product {
+    fn typename() -> String {
+        "Product".to_string()
+    }
+}
 
 pub type Repository = TableRepository<Product>;
 impl Repository {
@@ -54,7 +63,7 @@ impl Repository {
             .get_item()
             .table_name(self.table_name())
             .set_key(Some(HashMap::from([
-                ("pk".into(), id.as_str().into_attr()),
+                ("pk".into(), id.clone().into()),
                 ("sk".into(), Id::sk().into_attr()),
             ])))
             .send()

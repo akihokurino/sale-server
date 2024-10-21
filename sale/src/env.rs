@@ -17,7 +17,7 @@ impl Environments {
             port: std::env::var("PORT").unwrap_or("4000".to_string()),
             with_lambda: std::env::var("WITH_LAMBDA")
                 .map(|v| bool::from_str(&v).expect("failed to parse WITH_LAMBDA"))
-                .unwrap_or(false),
+                .unwrap_or(true),
         }
     }
 

@@ -40,26 +40,22 @@ impl ToAttr for &str {
 }
 
 impl<E> Id<E> {
-    pub fn typename() -> &'static str {
-        std::any::type_name::<E>()
-    }
-
     pub fn sk() -> &'static str {
         "#"
     }
 }
-impl<E> Into<AttributeValue> for Id<E> {
+impl<E: Typename> Into<AttributeValue> for Id<E> {
     fn into(self) -> AttributeValue {
-        AttributeValue::S(format!("{}#{}", Self::typename(), self.as_str()))
+        AttributeValue::S(format!("{}#{}", E::typename(), self.as_str()))
     }
 }
-impl<E> TryFrom<AttributeValue> for Id<E> {
+impl<E: Typename> TryFrom<AttributeValue> for Id<E> {
     type Error = String;
 
     fn try_from(value: AttributeValue) -> Result<Self, Self::Error> {
         let v = value.to_s()?;
         let v = v
-            .strip_prefix(Self::typename())
+            .strip_prefix(E::typename().as_str())
             .ok_or_else(|| "invalid id".to_string())?;
         Ok(Self::new(v))
     }
@@ -102,4 +98,8 @@ impl<E> TableRepository<E> {
             _phantom: PhantomData,
         }
     }
+}
+
+pub(crate) trait Typename {
+    fn typename() -> String;
 }

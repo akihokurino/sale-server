@@ -1159,6 +1159,7 @@ dependencies = [
  "anyhow",
  "derive_more 1.0.0",
  "lambda_runtime 0.13.0",
+ "regex",
  "reqwest",
  "sale",
  "scraper",
