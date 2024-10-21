@@ -62,6 +62,8 @@ Resources:
           AttributeType: S
         - AttributeName: lsk
           AttributeType: S
+        - AttributeName: source
+          AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
       BillingMode: PAY_PER_REQUEST
@@ -78,6 +80,14 @@ Resources:
         - IndexName: sk-createdAt-index
           KeySchema:
             - AttributeName: sk
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: source-createdAt-index
+          KeySchema:
+            - AttributeName: source
               KeyType: HASH
             - AttributeName: createdAt
               KeyType: RANGE

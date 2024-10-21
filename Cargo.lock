@@ -2984,6 +2984,7 @@ dependencies = [
  "aws-sdk-ssm",
  "aws-types",
  "base-62",
+ "base64 0.21.7",
  "derive_more 1.0.0",
  "dotenv-parser",
  "once_cell",
