@@ -4,10 +4,9 @@ use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::HttpRequest;
 use async_graphql::EmptySubscription;
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
-use sale::env::Environments;
 use sale::errors::AppError;
 use sale::errors::Kind::Unauthorized;
-use sale::{domain, AppResult};
+use sale::{di, domain, AppResult};
 
 mod mutation;
 mod query;
@@ -24,12 +23,15 @@ pub struct HttpHandler {
 }
 
 impl HttpHandler {
-    pub async fn new(envs: &Environments) -> Self {
+    pub async fn new() -> Self {
+        let envs = di::ENVIRONMENTS.clone();
+
         let schema = Schema::build(
             QueryRoot::default(),
             MutationRoot::default(),
             EmptySubscription,
         )
+        .data(di::DB_PRODUCT_REPOSITORY.get().await.clone())
         .finish();
 
         HttpHandler {

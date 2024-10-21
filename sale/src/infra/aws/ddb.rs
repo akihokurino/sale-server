@@ -1,59 +1,22 @@
-use crate::domain::Id;
 use crate::infra::aws::ddb::cursor::EntityWithCursor;
+use crate::infra::aws::ddb::types::{FromAttr, ToAttr};
 use aws_sdk_dynamodb::operation::query::builders::QueryFluentBuilder;
 use aws_sdk_dynamodb::types::{AttributeValue, ComparisonOperator, Condition, Select};
 use derive_more::Into;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-mod cursor;
+pub mod cursor;
 mod errors;
 mod index;
 pub mod types;
 
-trait FromAttr {
-    fn to_s(self) -> Result<String, String>;
-}
-impl FromAttr for AttributeValue {
-    fn to_s(self) -> Result<String, String> {
-        self.as_s()
-            .map(|v| v.to_string())
-            .map_err(move |_| "cannot convert".to_string())
-    }
-}
-
-trait ToAttr {
-    fn into_attr(self) -> AttributeValue;
-}
-impl ToAttr for String {
-    fn into_attr(self) -> AttributeValue {
-        AttributeValue::S(self)
-    }
-}
-impl ToAttr for &str {
-    fn into_attr(self) -> AttributeValue {
-        AttributeValue::S(self.to_string())
-    }
+pub trait HasTableName {
+    fn table_name() -> String;
 }
 
 pub trait HasTypeName {
     fn type_name() -> String;
-}
-impl<E: HasTypeName> Into<AttributeValue> for Id<E> {
-    fn into(self) -> AttributeValue {
-        AttributeValue::S(format!("{}#{}", E::type_name(), self.as_str()))
-    }
-}
-impl<E: HasTypeName> TryFrom<AttributeValue> for Id<E> {
-    type Error = String;
-
-    fn try_from(value: AttributeValue) -> Result<Self, Self::Error> {
-        let v = value.to_s()?;
-        let v = v
-            .strip_prefix(E::type_name().as_str())
-            .ok_or_else(|| "invalid id".to_string())?;
-        Ok(Self::new(v))
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -85,18 +48,10 @@ impl<E> TableRepository<E> {
         }
     }
 }
-
-pub trait HasTableName {
-    fn table_name() -> String;
-}
 impl<E: HasTableName> TableRepository<E> {
     fn table_name(&self) -> String {
         self.table_name_provider.get(E::table_name().as_str())
     }
-}
-
-fn anchor_attr_value() -> AttributeValue {
-    AttributeValue::S("#".into())
 }
 
 // https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/Query.Pagination.html
@@ -145,6 +100,11 @@ async fn count(q: QueryFluentBuilder) -> Result<usize, String> {
         q = q.set_exclusive_start_key(query_res.last_evaluated_key);
     }
     Ok(count)
+}
+
+#[allow(unused)]
+fn anchor_attr_value() -> AttributeValue {
+    AttributeValue::S("#".into())
 }
 
 #[allow(unused)]

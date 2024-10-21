@@ -1,4 +1,5 @@
 use reqwest::Client;
+use sale::domain::time;
 use sale::errors::Kind::Internal;
 use sale::errors::NotFoundToNone;
 use sale::{di, domain, AppResult};
@@ -8,7 +9,6 @@ use tokio::time::{sleep, Duration};
 pub async fn crawl(url: url::Url) -> AppResult<()> {
     let product_repo = di::DB_PRODUCT_REPOSITORY.get().await.clone();
 
-    println!("クロールページ: {}", url.as_str());
     let products = collect(&url).await?;
     for product in products {
         if let Some(_) = product_repo.get(&product.id).await.not_found_to_none()? {
@@ -33,6 +33,7 @@ pub async fn crawl(url: url::Url) -> AppResult<()> {
 }
 
 async fn collect(url: &url::Url) -> AppResult<Vec<domain::product::Product>> {
+    println!("商品一覧URL: {}", url.as_str());
     let client = Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .build()
@@ -90,6 +91,7 @@ async fn collect(url: &url::Url) -> AppResult<Vec<domain::product::Product>> {
             source,
             url,
             Some(points),
+            time::now(),
         ));
     }
 

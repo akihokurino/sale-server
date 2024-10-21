@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use sale::errors::Kind::Internal;
+use sale::infra::aws::ddb::cursor::Cursor;
 use sale::{di, AppResult};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -27,8 +28,15 @@ async fn main() -> Result<(), Error> {
         let args: Vec<String> = env::args().collect();
         let task = args.get(1).expect("task is required");
         let task = Task::from_str(task).expect("invalid task");
-        let url = args.get(2).expect("url is required").to_string();
-        if let Err(err) = _handler(Request { task, url }).await {
+        let url =
+            args.get(2)
+                .map(|v| v.to_string())
+                .and_then(|v| if v.is_empty() { None } else { Some(v) });
+        let cursor =
+            args.get(3)
+                .map(|v| v.to_string())
+                .and_then(|v| if v.is_empty() { None } else { Some(v) });
+        if let Err(err) = _handler(Request { task, url, cursor }).await {
             eprintln!("error: {:?}", err);
             return Err(anyhow!(err).into());
         }
@@ -51,18 +59,20 @@ async fn handler(event: LambdaEvent<Request>) -> Result<(), Error> {
 }
 
 async fn _handler(req: Request) -> AppResult<()> {
-    let url = url::Url::parse(&req.url).map_err(Internal.from_srcf())?;
-
     match req.task {
-        Task::CrawlList => crawl_product_list::crawl(url).await,
-        Task::CrawlDetail => crawl_product_detail::crawl().await,
+        Task::CrawlList => {
+            let url = url::Url::parse(&req.url.unwrap()).map_err(Internal.from_srcf())?;
+            crawl_product_list::crawl(url).await
+        }
+        Task::CrawlDetail => crawl_product_detail::crawl(req.cursor.map(|v| Cursor::from(v))).await,
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Request {
     pub task: Task,
-    pub url: String,
+    pub url: Option<String>,
+    pub cursor: Option<String>,
 }
 #[derive(
     Debug,

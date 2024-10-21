@@ -17,7 +17,7 @@ async fn main() -> std::io::Result<()> {
         .expect("failed to load ssm parameter store");
 
     let envs = di::ENVIRONMENTS.clone();
-    let service_http_handler = graphql::service::HttpHandler::new(&envs).await;
+    let service_http_handler = graphql::service::HttpHandler::new().await;
     let is_prod = envs.is_prod();
 
     let app_factory = move || {

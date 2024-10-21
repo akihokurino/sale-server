@@ -2,6 +2,7 @@ use rand::random;
 use std::marker::PhantomData;
 
 pub mod product;
+pub mod time;
 pub mod user;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Clone)]
