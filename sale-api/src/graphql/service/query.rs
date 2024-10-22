@@ -1,8 +1,9 @@
+use crate::graphql::connection::connection_from;
 use crate::graphql::data_loader::ProductLoader;
 use crate::graphql::errors;
 use crate::graphql::errors::not_found_error;
 use crate::graphql::service::types::product::Product;
-use async_graphql::connection::{Connection, Edge, EmptyFields};
+use async_graphql::connection::Connection;
 use async_graphql::dataloader::Loader;
 use async_graphql::{Context, MergedObject, Object, ID};
 use sale::domain;
@@ -27,20 +28,7 @@ impl DefaultQuery {
         let products = product_repo
             .find_by_status(domain::product::Status::Active, cursor, limit)
             .await?;
-        let has_next = !products.is_empty();
-        let mut edges = products
-            .into_iter()
-            .map(|product| {
-                Edge::<String, Product, EmptyFields>::new(
-                    product.cursor.to_string(),
-                    Product::from(product.entity),
-                )
-            })
-            .collect::<Vec<_>>();
-        let mut connection = Connection::new(false, has_next);
-        connection.edges.append(&mut edges);
-
-        Ok(connection)
+        Ok(connection_from(products, |v| Product::from(v)))
     }
 
     async fn product(&self, ctx: &Context<'_>, id: ID) -> Result<Product, errors::Error> {
