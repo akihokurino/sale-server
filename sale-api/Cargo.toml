@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 sale = { path = "../sale" }
 tokio = { version = "1", features = ["full"] }
-async-trait = "0.1.77"
+async-trait = "0.1.83"
 lambda-web = { version = "0.2.1", features = ["actix4"] }
 actix-web = "4.9.0"
 actix-cors = "0.7.0"

@@ -1,20 +1,25 @@
 use async_graphql::dataloader::Loader;
-use derive_more::{From, Into};
 use sale::domain;
 use sale::errors::AppError;
-use sale::infra::aws::ddb;
+use sale::infra::aws::ddb::prelude::*;
 use std::collections::HashMap;
+use std::hash::Hash;
+use std::sync::Arc;
 
-#[derive(Debug, Clone, Into, From)]
-pub struct ProductLoader(ddb::types::product::Repository);
-impl Loader<domain::product::Id> for ProductLoader {
-    type Value = domain::product::Product;
+#[derive(Clone)]
+pub struct DataLoader<E, K>(pub Arc<dyn BatchGet<E, K> + Send + Sync>);
+impl<E, K> Loader<K> for DataLoader<E, K>
+where
+    E: Send + Sync + Clone + 'static,
+    K: Hash + Eq + Send + Sync + Clone + 'static,
+{
+    type Value = E;
     type Error = AppError;
 
-    async fn load(
-        &self,
-        keys: &[domain::product::Id],
-    ) -> Result<HashMap<domain::product::Id, Self::Value>, Self::Error> {
+    async fn load(&self, keys: &[K]) -> Result<HashMap<K, Self::Value>, Self::Error> {
         self.0.batch_get(keys).await
     }
 }
+
+#[derive(Clone)]
+pub struct ProductLoader(pub DataLoader<domain::product::Product, domain::product::Id>);

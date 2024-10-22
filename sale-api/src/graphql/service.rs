@@ -1,4 +1,4 @@
-use crate::graphql::data_loader;
+use crate::graphql::data_loader::{DataLoader, ProductLoader};
 use crate::graphql::service::mutation::MutationRoot;
 use crate::graphql::service::query::QueryRoot;
 use actix_web::http::header::{HeaderMap, HeaderValue};
@@ -8,6 +8,7 @@ use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 use sale::errors::AppError;
 use sale::errors::Kind::Unauthorized;
 use sale::{di, domain, AppResult};
+use std::sync::Arc;
 
 mod mutation;
 mod query;
@@ -33,9 +34,9 @@ impl HttpHandler {
             EmptySubscription,
         )
         .data(di::DB_PRODUCT_REPOSITORY.get().await.clone())
-        .data(data_loader::ProductLoader::from(
+        .data(ProductLoader(DataLoader(Arc::new(
             di::DB_PRODUCT_REPOSITORY.get().await.clone(),
-        ))
+        ))))
         .finish();
 
         HttpHandler {

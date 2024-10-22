@@ -12,6 +12,7 @@ use std::marker::PhantomData;
 pub mod cursor;
 mod errors;
 mod index;
+pub mod prelude;
 pub mod types;
 
 pub trait HasTableName {

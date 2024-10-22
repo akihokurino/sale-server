@@ -4,11 +4,13 @@ use crate::infra::aws::ddb::cursor::{entity_with_cursor_conv_from, Cursor, WithC
 use crate::infra::aws::ddb::index::{
     EvaluateKeyNamesProvider, SecondaryIndex, GENERAL_PRIMARY_INDEX,
 };
+use crate::infra::aws::ddb::prelude::BatchGet;
 use crate::infra::aws::ddb::{
     anchor_attr_value, batch_get, condition_eq, query, EntityWithCursor, FromAttrValue,
     HasTableName, HasTypeName, TableRepository, ToAttrValue,
 };
 use crate::{AppResult, MustPresent};
+use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -175,19 +177,6 @@ impl Repository {
         })
     }
 
-    pub async fn batch_get(&self, ids: &[Id]) -> AppResult<HashMap<Id, Product>> {
-        let keys = ids
-            .into_iter()
-            .map(|v| v.clone().into_attr_map())
-            .collect::<Vec<HashMap<String, AttributeValue>>>();
-
-        let res = batch_get(&self.cli, self.table_name(), &*keys, Product::try_from)
-            .await
-            .map_err(|v| Internal.with(v))?;
-
-        Ok(res.into_iter().map(|v| (v.id.clone(), v)).collect())
-    }
-
     pub async fn put(&self, item: Product) -> AppResult<()> {
         self.cli
             .put_item()
@@ -209,5 +198,20 @@ impl Repository {
             .send()
             .await?;
         Ok(())
+    }
+}
+#[async_trait]
+impl BatchGet<Product, Id> for Repository {
+    async fn batch_get(&self, ids: &[Id]) -> AppResult<HashMap<Id, Product>> {
+        let keys = ids
+            .into_iter()
+            .map(|v| v.clone().into_attr_map())
+            .collect::<Vec<HashMap<String, AttributeValue>>>();
+
+        let res = batch_get(&self.cli, self.table_name(), &*keys, Product::try_from)
+            .await
+            .map_err(|v| Internal.with(v))?;
+
+        Ok(res.into_iter().map(|v| (v.id.clone(), v)).collect())
     }
 }
