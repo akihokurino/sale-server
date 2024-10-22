@@ -34,7 +34,7 @@ impl DefaultQuery {
     async fn product(&self, ctx: &Context<'_>, id: ID) -> Result<Product, errors::Error> {
         let product_loader = ctx.data::<ProductLoader>()?;
         let id = domain::product::Id::new(id.0);
-        let res = product_loader.0.load(&[id.clone()]).await?;
+        let res = product_loader.load(&[id.clone()]).await?;
         res.get(&id)
             .map(|v| Product::from(v.clone()))
             .ok_or(not_found_error())

@@ -21,5 +21,4 @@ where
     }
 }
 
-#[derive(Clone)]
-pub struct ProductLoader(pub DataLoader<domain::product::Product, domain::product::Id>);
+pub type ProductLoader = DataLoader<domain::product::Product, domain::product::Id>;

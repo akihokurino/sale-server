@@ -34,9 +34,7 @@ impl HttpHandler {
             EmptySubscription,
         )
         .data(di::DB_PRODUCT_REPOSITORY.get().await.clone())
-        .data(ProductLoader(DataLoader(Arc::new(
-            di::DB_PRODUCT_REPOSITORY.get().await.clone(),
-        ))))
+        .data(DataLoader(Arc::new(di::DB_PRODUCT_REPOSITORY.get().await.clone())) as ProductLoader)
         .finish();
 
         HttpHandler {
