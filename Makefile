@@ -60,7 +60,7 @@ run-local-crawl-rakuten-product-detail:
 run-dev-crawl-rakuten-product-detail:
 	aws lambda invoke \
       	--function-name dev-sale-server-CrawlerRakutenFunction-GYPU6RLBMK5G \
-    	--payload '{"task":"CrawlDetail", "cursor": ""}' \
+    	--payload '{"task":"CrawlDetail", "cursor": "eyJzb3VyY2UiOnsiUyI6IlJha3V0ZW4ifSwic2siOnsiUyI6IiMifSwiY3JlYXRlZEF0Ijp7Ik4iOiIxNzI5NTgxODQ0NDg5NDQ3MDAwIn0sInBrIjp7IlMiOiJQcm9kdWN0I1Jha3V0ZW4tMzgwNzk1LTEwMDAzNzU5In19"}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
     	/dev/null

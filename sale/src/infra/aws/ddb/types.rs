@@ -74,7 +74,7 @@ impl<E: HasTypeName> TryFrom<AttributeValue> for Id<E> {
     fn try_from(value: AttributeValue) -> Result<Self, Self::Error> {
         let v = value.to_s()?;
         let v = v
-            .strip_prefix(E::type_name().as_str())
+            .strip_prefix(&format!("{}#", E::type_name()))
             .ok_or_else(|| "invalid id".to_string())?;
         Ok(Self::new(v))
     }
