@@ -1,7 +1,9 @@
 use crate::graphql::shared::types::DateTime;
 use async_graphql::{Object, ID};
+use derive_more::{From, Into};
 use sale::domain;
 
+#[derive(Debug, Clone, Into, From)]
 pub struct Product(pub domain::product::Product);
 #[Object]
 impl Product {

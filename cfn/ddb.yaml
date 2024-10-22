@@ -64,6 +64,8 @@ Resources:
           AttributeType: S
         - AttributeName: source
           AttributeType: S
+        - AttributeName: status
+          AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
       BillingMode: PAY_PER_REQUEST

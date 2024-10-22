@@ -1,6 +1,6 @@
 use crate::graphql::errors;
 use crate::graphql::service::types::product::Product;
-use async_graphql::connection::Connection;
+use async_graphql::connection::{Connection, Edge, EmptyFields};
 use async_graphql::{Context, MergedObject, Object, ID};
 use sale::domain;
 use sale::infra::aws::ddb;
@@ -23,8 +23,20 @@ impl DefaultQuery {
         let products = product_repo
             .find_by_status(domain::product::Status::Active, cursor, Some(10))
             .await?;
+        let has_next = !products.is_empty();
+        let mut edges = products
+            .into_iter()
+            .map(|product| {
+                Edge::<String, Product, EmptyFields>::new(
+                    product.cursor.to_string(),
+                    Product::from(product.entity),
+                )
+            })
+            .collect::<Vec<_>>();
+        let mut connection = Connection::new(false, has_next);
+        connection.edges.append(&mut edges);
 
-        todo!()
+        Ok(connection)
     }
 
     async fn product(&self, ctx: &Context<'_>, id: ID) -> Result<Product, errors::Error> {

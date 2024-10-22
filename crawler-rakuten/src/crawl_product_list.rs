@@ -46,9 +46,12 @@ async fn collect(url: &url::Url) -> AppResult<Vec<domain::product::Product>> {
     if response.status().is_redirection() {
         return Err(Internal.with("リダイレクトが検知されました").into());
     }
-
     let body = response.text().await.map_err(Internal.from_srcf())?;
     let document = Html::parse_document(&body);
+
+    // let mut file = File::create("test.html").map_err(Internal.from_srcf())?;
+    // file.write_all(body.as_bytes())
+    //     .map_err(Internal.from_srcf())?;
 
     let item_selector = Selector::parse(".searchresultitems .searchresultitem").unwrap();
     let url_selector = Selector::parse(".image-link-wrapper--3P6dv").unwrap();
