@@ -5,8 +5,8 @@ use crate::infra::aws::ddb::index::{
     EvaluateKeyNamesProvider, SecondaryIndex, GENERAL_PRIMARY_INDEX,
 };
 use crate::infra::aws::ddb::{
-    anchor_attr_value, condition_eq, query, EntityWithCursor, FromAttr, HasTableName, HasTypeName,
-    TableRepository, ToAttr,
+    anchor_attr_value, batch_get, condition_eq, query, EntityWithCursor, FromAttrValue,
+    HasTableName, HasTypeName, TableRepository, ToAttrValue,
 };
 use crate::{AppResult, MustPresent};
 use aws_sdk_dynamodb::types::AttributeValue;
@@ -173,6 +173,19 @@ impl Repository {
         res.item.map_or(Err(NotFound.into()), |v| {
             Ok(Product::try_from(v).map_err(Internal.withf())?)
         })
+    }
+
+    pub async fn batch_get(&self, ids: &[Id]) -> AppResult<HashMap<Id, Product>> {
+        let keys = ids
+            .into_iter()
+            .map(|v| v.clone().into_attr_map())
+            .collect::<Vec<HashMap<String, AttributeValue>>>();
+
+        let res = batch_get(&self.cli, self.table_name(), &*keys, Product::try_from)
+            .await
+            .map_err(|v| Internal.with(v))?;
+
+        Ok(res.into_iter().map(|v| (v.id.clone(), v)).collect())
     }
 
     pub async fn put(&self, item: Product) -> AppResult<()> {

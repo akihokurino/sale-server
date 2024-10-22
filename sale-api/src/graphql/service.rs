@@ -1,3 +1,4 @@
+use crate::graphql::data_loader;
 use crate::graphql::service::mutation::MutationRoot;
 use crate::graphql::service::query::QueryRoot;
 use actix_web::http::header::{HeaderMap, HeaderValue};
@@ -32,6 +33,9 @@ impl HttpHandler {
             EmptySubscription,
         )
         .data(di::DB_PRODUCT_REPOSITORY.get().await.clone())
+        .data(data_loader::ProductLoader::from(
+            di::DB_PRODUCT_REPOSITORY.get().await.clone(),
+        ))
         .finish();
 
         HttpHandler {

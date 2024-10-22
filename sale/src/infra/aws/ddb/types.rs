@@ -1,43 +1,44 @@
 use crate::domain::time::LocalDateTime;
 use crate::domain::Id;
-use crate::infra::aws::ddb::HasTypeName;
+use crate::infra::aws::ddb::{anchor_attr_value, HasTypeName};
 use aws_sdk_dynamodb::types::AttributeValue;
 use chrono::{Local, TimeZone};
+use std::collections::HashMap;
 use std::str::FromStr;
 
 pub mod product;
 
-pub trait ToAttr {
+pub trait ToAttrValue {
     fn into_attr(self) -> AttributeValue;
 }
-impl ToAttr for String {
+impl ToAttrValue for String {
     fn into_attr(self) -> AttributeValue {
         AttributeValue::S(self)
     }
 }
-impl ToAttr for &str {
+impl ToAttrValue for &str {
     fn into_attr(self) -> AttributeValue {
         AttributeValue::S(self.to_string())
     }
 }
-impl ToAttr for Vec<String> {
+impl ToAttrValue for Vec<String> {
     fn into_attr(self) -> AttributeValue {
         AttributeValue::L(self.into_iter().map(|v| v.into_attr()).collect())
     }
 }
-impl ToAttr for LocalDateTime {
+impl ToAttrValue for LocalDateTime {
     fn into_attr(self) -> AttributeValue {
         let v = self.timestamp_nanos_opt().unwrap();
         AttributeValue::N(v.to_string())
     }
 }
 
-pub trait FromAttr {
+pub trait FromAttrValue {
     fn to_s(self) -> Result<String, String>;
     fn to_s_list(self) -> Result<Vec<String>, String>;
     fn to_date_time(self) -> Result<LocalDateTime, String>;
 }
-impl FromAttr for AttributeValue {
+impl FromAttrValue for AttributeValue {
     fn to_s(self) -> Result<String, String> {
         self.as_s()
             .map(|v| v.to_string())
@@ -77,5 +78,13 @@ impl<E: HasTypeName> TryFrom<AttributeValue> for Id<E> {
             .strip_prefix(&format!("{}#", E::type_name()))
             .ok_or_else(|| "invalid id".to_string())?;
         Ok(Self::new(v))
+    }
+}
+impl<E: HasTypeName> Id<E> {
+    fn into_attr_map(self) -> HashMap<String, AttributeValue> {
+        [("pk", Some(self.into())), ("sk", Some(anchor_attr_value()))]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone().unwrap()))
+            .collect()
     }
 }

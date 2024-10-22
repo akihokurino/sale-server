@@ -54,6 +54,10 @@ impl Into<FieldError> for Error {
     }
 }
 
+pub fn not_found_error() -> Error {
+    Error::App(NotFound.with("指定されたリソースが見つかりません"))
+}
+
 // FieldErrorがstd::errorを実装していないため
 #[derive(Debug)]
 struct FieldStdErr(FieldError);

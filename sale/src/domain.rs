@@ -1,11 +1,12 @@
 use rand::random;
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
 pub mod product;
 pub mod time;
 pub mod user;
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Clone)]
+#[derive(Debug, Ord, PartialOrd, Clone)]
 pub struct Id<E> {
     id: String,
     _phantom: PhantomData<E>,
@@ -34,6 +35,17 @@ impl<E> From<String> for Id<E> {
 impl<E> Into<String> for Id<E> {
     fn into(self) -> String {
         self.id
+    }
+}
+impl<E> Hash for Id<E> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state)
+    }
+}
+impl<E> Eq for Id<E> {}
+impl<E> PartialEq<Self> for Id<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
     }
 }
 

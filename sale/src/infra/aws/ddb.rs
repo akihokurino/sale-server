@@ -1,9 +1,12 @@
 use crate::infra::aws::ddb::cursor::EntityWithCursor;
-use crate::infra::aws::ddb::types::{FromAttr, ToAttr};
+use crate::infra::aws::ddb::types::{FromAttrValue, ToAttrValue};
 use aws_sdk_dynamodb::operation::query::builders::QueryFluentBuilder;
-use aws_sdk_dynamodb::types::{AttributeValue, ComparisonOperator, Condition, Select};
+use aws_sdk_dynamodb::types::{
+    AttributeValue, ComparisonOperator, Condition, KeysAndAttributes, Select,
+};
 use derive_more::Into;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::iter;
 use std::marker::PhantomData;
 
 pub mod cursor;
@@ -100,6 +103,103 @@ async fn count(q: QueryFluentBuilder) -> Result<usize, String> {
         q = q.set_exclusive_start_key(query_res.last_evaluated_key);
     }
     Ok(count)
+}
+
+async fn batch_get<T>(
+    cli: &aws_sdk_dynamodb::Client,
+    table_name: impl Into<String>,
+    keys: &[HashMap<String, AttributeValue>],
+    conv: impl Fn(HashMap<String, AttributeValue>) -> Result<T, String>,
+) -> Result<Vec<T>, String> {
+    let table_name = table_name.into();
+
+    match keys.len() {
+        0 => return Ok(vec![]),
+        1 => {
+            return cli
+                .get_item()
+                .table_name(table_name)
+                .set_key(Some(keys[0].clone()))
+                .send()
+                .await
+                .map_err(|e| e.to_string())?
+                .item
+                .map(&conv)
+                .into_iter()
+                .collect::<Result<Vec<_>, String>>()
+        }
+        _ => (),
+    }
+
+    const CHUNK_SIZE: usize = 100;
+    let mut res = Vec::<T>::with_capacity(keys.len());
+    let mut req_keys = VecDeque::from_iter(keys.into_iter().cloned());
+    let mut unprocessed_keys = Vec::<HashMap<String, AttributeValue>>::with_capacity(CHUNK_SIZE);
+    let mut next_keys = Vec::<HashMap<String, AttributeValue>>::with_capacity(CHUNK_SIZE);
+
+    while {
+        next_keys.truncate(0);
+        next_keys.append(&mut unprocessed_keys);
+        next_keys.extend(
+            (0..(CHUNK_SIZE - next_keys.len()))
+                .map(|_| req_keys.pop_front())
+                .take_while(Option::is_some)
+                .flatten(),
+        );
+        next_keys.len() > 0
+    } {
+        match next_keys.len() {
+            1 => res.extend(
+                cli.get_item()
+                    .table_name(&table_name)
+                    .set_key(Some(next_keys.pop().unwrap()))
+                    .send()
+                    .await
+                    .map_err(|e| e.to_string())?
+                    .item
+                    .map(&conv)
+                    .transpose()?
+                    .into_iter(),
+            ),
+            _ => {
+                let api_res = cli
+                    .batch_get_item()
+                    .set_request_items(Some(
+                        iter::once((
+                            table_name.clone(),
+                            KeysAndAttributes::builder()
+                                .set_keys(Some(next_keys.to_vec()))
+                                .build()
+                                .unwrap(),
+                        ))
+                        .collect(),
+                    ))
+                    .send()
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+                if let Some(mut responses) = api_res.responses {
+                    if let Some(items) = responses.remove(&table_name) {
+                        res.append(
+                            items
+                                .into_iter()
+                                .map(&conv)
+                                .collect::<Result<Vec<_>, String>>()?
+                                .as_mut(),
+                        )
+                    }
+                }
+
+                if let Some(mut upks) = api_res.unprocessed_keys {
+                    if let Some(KeysAndAttributes { mut keys, .. }) = upks.remove(&table_name) {
+                        unprocessed_keys.append(&mut keys);
+                    }
+                }
+            }
+        };
+    }
+
+    Ok(res)
 }
 
 #[allow(unused)]

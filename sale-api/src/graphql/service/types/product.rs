@@ -4,7 +4,7 @@ use derive_more::{From, Into};
 use sale::domain;
 
 #[derive(Debug, Clone, Into, From)]
-pub struct Product(pub domain::product::Product);
+pub struct Product(domain::product::Product);
 #[Object]
 impl Product {
     async fn id(&self) -> ID {
