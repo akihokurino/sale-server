@@ -6,13 +6,15 @@ use sale::{di, domain, AppResult};
 use scraper::{Html, Selector};
 use tokio::time::{sleep, Duration};
 
-pub async fn crawl(url: url::Url) -> AppResult<()> {
+pub async fn crawl(url: &url::Url) -> AppResult<Option<u32>> {
     let product_repo = di::DB_PRODUCT_REPOSITORY.get().await.clone();
 
-    let products = collect(&url).await?;
+    let products = collect(url).await?;
+    if products.is_empty() {
+        return Ok(None);
+    }
     for product in products {
         if let Some(_) = product_repo.get(&product.id).await.not_found_to_none()? {
-            println!("すでに存在する商品: {}", product.id.as_str());
             continue;
         }
         product_repo.put(product.clone()).await?;
@@ -25,11 +27,9 @@ pub async fn crawl(url: url::Url) -> AppResult<()> {
         .ok_or(Internal.with("pが見つかりませんでした"))?;
     let page = page.parse::<u32>().map_err(Internal.from_srcf())?;
 
-    println!("ページ: {}", page);
-
     sleep(Duration::from_secs(1)).await;
 
-    Ok(())
+    Ok(Some(page + 1))
 }
 
 async fn collect(url: &url::Url) -> AppResult<Vec<domain::product::Product>> {
@@ -44,7 +44,7 @@ async fn collect(url: &url::Url) -> AppResult<Vec<domain::product::Product>> {
         .await
         .map_err(Internal.from_srcf())?;
     if response.status().is_redirection() {
-        return Err(Internal.with("リダイレクトが検知されました").into());
+        return Ok(vec![]);
     }
     let body = response.text().await.map_err(Internal.from_srcf())?;
     let document = Html::parse_document(&body);

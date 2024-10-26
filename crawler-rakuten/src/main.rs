@@ -83,11 +83,7 @@ async fn bridge(event: LambdaEvent<Value>) -> Result<(), Error> {
 async fn handler(req: Request) -> AppResult<()> {
     let sns_arn = di::ENVIRONMENTS.crawler_rakuten_sns_arn.clone();
     let sns = di::SNS_ADAPTER.get().await.clone();
-
-    println!(
-        "Crawler Rakuten Req: {:?}",
-        serde_json::to_string(&req).unwrap()
-    );
+    let with_lambda = di::ENVIRONMENTS.with_lambda;
 
     match req.task {
         Task::CrawlEntrypoint => {
@@ -105,10 +101,64 @@ async fn handler(req: Request) -> AppResult<()> {
             Ok(())
         }
         Task::CrawlList => {
-            let url = url::Url::parse(&req.url.unwrap()).map_err(Internal.from_srcf())?;
-            crawl_product_list::crawl(url).await
+            let mut url =
+                url::Url::parse(&req.url.clone().unwrap()).map_err(Internal.from_srcf())?;
+            if let Some(next_page) = crawl_product_list::crawl(&url).await? {
+                if !with_lambda {
+                    println!("ローカル実行により終了");
+                    return Ok(());
+                }
+
+                if next_page <= 2 {
+                    let query: Vec<(String, String)> = url
+                        .query_pairs()
+                        .filter(|(name, _)| name != "p")
+                        .map(|(name, value)| (name.into_owned(), value.into_owned()))
+                        .collect();
+                    url.query_pairs_mut()
+                        .clear()
+                        .extend_pairs(&query)
+                        .append_pair("p", &next_page.to_string());
+
+                    sns.publish(
+                        Request {
+                            task: Task::CrawlList,
+                            url: Some(url.to_string()),
+                            cursor: None,
+                        },
+                        sns_arn.clone(),
+                    )
+                    .await?;
+                } else {
+                    println!("{}がページ上限を超えました", url.as_str());
+                }
+            }
+
+            Ok(())
         }
-        Task::CrawlDetail => crawl_product_detail::crawl(req.cursor.map(|v| Cursor::from(v))).await,
+        Task::CrawlDetail => {
+            let next_cursor =
+                crawl_product_detail::crawl(req.cursor.map(|v| Cursor::from(v))).await?;
+            if !with_lambda {
+                println!("ローカル実行により終了 next_cursor: {:?}", next_cursor);
+                return Ok(());
+            }
+
+            if let Some(cursor) = next_cursor {
+                sns.publish(
+                    Request {
+                        task: Task::CrawlDetail,
+                        url: None,
+                        cursor: Some(cursor.to_string()),
+                    },
+                    sns_arn.clone(),
+                )
+                .await?;
+            } else {
+                println!("全ての商品詳細のクロールが完了しました");
+            }
+            Ok(())
+        }
     }
 }
 
@@ -151,9 +201,9 @@ pub enum Task {
     CrawlDetail,
 }
 
-const LIST_URLS: [&str; 2] = [
+const LIST_URLS: [&str; 1] = [
     "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1",
-    "https://search.rakuten.co.jp/search/mall/-/100371/?f=13&p=1",
+    //"https://search.rakuten.co.jp/search/mall/-/100371/?f=13&p=1",
     // "https://search.rakuten.co.jp/search/mall/-/558885/?f=13&p=1",
     // "https://search.rakuten.co.jp/search/mall/-/216131/?f=13&p=1",
     // "https://search.rakuten.co.jp/search/mall/-/216129/?f=13&p=1",

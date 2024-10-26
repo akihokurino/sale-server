@@ -8,17 +8,24 @@ use sale::infra::aws::ddb::cursor::Cursor;
 use sale::{di, AppResult};
 use scraper::{Html, Selector};
 use std::io::Read;
+use std::time::Duration;
+use tokio::time::sleep;
 
-pub async fn crawl(cursor: Option<Cursor>) -> AppResult<()> {
+pub async fn crawl(cursor: Option<Cursor>) -> AppResult<Option<String>> {
     let product_repo = di::DB_PRODUCT_REPOSITORY.get().await.clone();
 
     let products = product_repo
-        .find_by_source(Source::Rakuten, cursor, Some(10))
+        .find_by_source(Source::Rakuten, cursor.clone(), Some(10))
         .await?;
-
     if products.is_empty() {
-        return Ok(());
+        return Ok(None);
     }
+
+    println!(
+        "詳細クロールする商品数: {}, cursor: {}",
+        products.len(),
+        cursor.map(|v| v.to_string()).unwrap_or_default()
+    );
 
     let mut cursor: Option<Cursor> = None;
     for product in products {
@@ -51,13 +58,11 @@ pub async fn crawl(cursor: Option<Cursor>) -> AppResult<()> {
         }
 
         cursor = Some(product.cursor);
+
+        sleep(Duration::from_secs(1)).await;
     }
 
-    if let Some(cursor) = cursor {
-        println!("next cursor: {}", cursor.to_string())
-    }
-
-    Ok(())
+    Ok(cursor.map(|v| v.to_string()))
 }
 
 fn detect_brandavenue(url: url::Url) -> bool {

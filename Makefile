@@ -13,6 +13,7 @@ DEPLOY_CRATES := sale-api crawler-rakuten
 $(BIN_OUTPUT_DIR)/%: $(SRC_FILES)
 	$(DOCKER_CMD_BASE) cargo build --release --bin $(lastword $(subst /, ,$@)) --target x86_64-unknown-linux-musl
 	if [ "$(STRIP)" = "1" ]; then strip $@; fi
+CRAWLER_RAKUTEN_LAMBDA_NAME := dev-sale-server-CrawlerRakutenFunction-EBqCiM66oVeo
 
 build-ApiFunction: $(BIN_OUTPUT_DIR)/sale-api
 	cp $< $(ARTIFACTS_DIR)/bootstrap
@@ -39,14 +40,10 @@ crawl-amazon-product-detail:
 run-local:
 	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin sale-api
 
-PHONY: run-local-crawl-rakuten-entrypoint
-run-local-crawl-rakuten-entrypoint:
-	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin crawler-rakuten -- CrawlEntrypoint "" ""
-
 .PHONY: run-dev-crawl-rakuten-entrypoint
 run-dev-crawl-rakuten-entrypoint:
 	aws lambda invoke \
-      	--function-name dev-sale-server-CrawlerRakutenFunction-GYPU6RLBMK5G \
+      	--function-name $(CRAWLER_RAKUTEN_LAMBDA_NAME) \
     	--payload '{"task":"CrawlEntrypoint"}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
@@ -59,7 +56,7 @@ run-local-crawl-rakuten-product-list:
 .PHONY: run-dev-crawl-rakuten-product-list
 run-dev-crawl-rakuten-product-list:
 	aws lambda invoke \
-      	--function-name dev-sale-server-CrawlerRakutenFunction-GYPU6RLBMK5G \
+      	--function-name $(CRAWLER_RAKUTEN_LAMBDA_NAME) \
     	--payload '{"task":"CrawlList", "url": "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1"}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
@@ -72,8 +69,8 @@ run-local-crawl-rakuten-product-detail:
 .PHONY: run-dev-crawl-rakuten-product-detail
 run-dev-crawl-rakuten-product-detail:
 	aws lambda invoke \
-      	--function-name dev-sale-server-CrawlerRakutenFunction-GYPU6RLBMK5G \
-    	--payload '{"task":"CrawlDetail", "cursor": "eyJzb3VyY2UiOnsiUyI6IlJha3V0ZW4ifSwic2siOnsiUyI6IiMifSwiY3JlYXRlZEF0Ijp7Ik4iOiIxNzI5NTgxODQ0NDg5NDQ3MDAwIn0sInBrIjp7IlMiOiJQcm9kdWN0I1Jha3V0ZW4tMzgwNzk1LTEwMDAzNzU5In19"}' \
+      	--function-name $(CRAWLER_RAKUTEN_LAMBDA_NAME) \
+    	--payload '{"task":"CrawlDetail"}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
     	/dev/null
