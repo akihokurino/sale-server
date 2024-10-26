@@ -70,7 +70,7 @@ run-local-crawl-rakuten-product-detail:
 run-dev-crawl-rakuten-product-detail:
 	aws lambda invoke \
       	--function-name $(CRAWLER_RAKUTEN_LAMBDA_NAME) \
-    	--payload '{"body": {"CrawlDetail": {"only_preparing": true}}}' \
+    	--payload '{"body": {"CrawlDetail": {"only_preparing": false}}}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
     	/dev/null
