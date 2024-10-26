@@ -63,7 +63,7 @@ impl HttpHandler {
         self.schema.execute(gql_req).await.into()
     }
 
-    async fn verify_token(&self, hv: &HeaderValue) -> AppResult<AuthorizedUserId> {
+    async fn verify_token(&self, _hv: &HeaderValue) -> AppResult<AuthorizedUserId> {
         Ok(domain::user::Id::generate())
     }
 }

@@ -39,7 +39,7 @@ impl Kind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppError {
     pub kind: Kind,
     pub msg: Option<String>,
@@ -60,6 +60,15 @@ impl derive_more::Display for AppError {
 impl From<Kind> for AppError {
     fn from(kind: Kind) -> Self {
         Self { kind, msg: None }
+    }
+}
+impl AppError {
+    pub fn serialize(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+
+    pub fn deserialize(value: String) -> Self {
+        serde_json::from_str(&value).unwrap()
     }
 }
 

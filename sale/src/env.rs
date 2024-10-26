@@ -9,6 +9,8 @@ pub struct Environments {
     pub env: String,
     pub port: String,
     pub with_lambda: bool,
+    pub crawler_rakuten_lambda_arn: String,
+    pub crawler_rakuten_sns_arn: String,
 }
 impl Environments {
     pub fn new() -> Self {
@@ -18,6 +20,8 @@ impl Environments {
             with_lambda: std::env::var("WITH_LAMBDA")
                 .map(|v| bool::from_str(&v).expect("failed to parse WITH_LAMBDA"))
                 .unwrap_or(true),
+            crawler_rakuten_lambda_arn: must_env("CRAWLER_RAKUTEN_LAMBDA_ARN"),
+            crawler_rakuten_sns_arn: must_env("CRAWLER_RAKUTEN_SNS_ARN"),
         }
     }
 

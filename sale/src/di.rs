@@ -1,4 +1,4 @@
-use crate::infra::aws::{ddb, ssm};
+use crate::infra::aws::{ddb, lambda, sns, ssm};
 use crate::sync::LazyAsync;
 use crate::{env, lazy_async};
 use aws_config::BehaviorVersion;
@@ -15,10 +15,22 @@ static SSM_CLIENT: LazyAsync<aws_sdk_ssm::Client> =
     lazy_async!(async { aws_sdk_ssm::Client::new(AWS_CONFIG.get().await) });
 static DDB_CLIENT: LazyAsync<aws_sdk_dynamodb::Client> =
     lazy_async!(async { aws_sdk_dynamodb::Client::new(AWS_CONFIG.get().await) });
+static LAMBDA_CLIENT: LazyAsync<aws_sdk_lambda::Client> = lazy_async!(async {
+    let ses_config = aws_config::defaults(BehaviorVersion::latest()).load().await;
+    aws_sdk_lambda::Client::new(&ses_config)
+});
+static SNS_CLIENT: LazyAsync<aws_sdk_sns::Client> = lazy_async!(async {
+    let ses_config = aws_config::defaults(BehaviorVersion::latest()).load().await;
+    aws_sdk_sns::Client::new(&ses_config)
+});
 
 pub static SSM_ADAPTER: LazyAsync<ssm::Adapter> = lazy_async!(async {
     ssm::Adapter::new(SSM_CLIENT.get().await.clone(), SSM_PARAMETER_NAME.clone())
 });
+pub static LAMBDA_ADAPTER: LazyAsync<lambda::Adapter> =
+    lazy_async!(async { lambda::Adapter::new(LAMBDA_CLIENT.get().await.clone(),) });
+pub static SNS_ADAPTER: LazyAsync<sns::Adapter> =
+    lazy_async!(async { sns::Adapter::new(SNS_CLIENT.get().await.clone(),) });
 
 async fn ddb_repo<E>() -> ddb::TableRepository<E> {
     ddb::TableRepository::new(

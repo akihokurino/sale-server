@@ -16,6 +16,10 @@ pub async fn crawl(cursor: Option<Cursor>) -> AppResult<()> {
         .find_by_source(Source::Rakuten, cursor, Some(10))
         .await?;
 
+    if products.is_empty() {
+        return Ok(());
+    }
+
     let mut cursor: Option<Cursor> = None;
     for product in products {
         if detect_brandavenue(product.entity.detail_url.clone()) {

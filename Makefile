@@ -39,6 +39,19 @@ crawl-amazon-product-detail:
 run-local:
 	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin sale-api
 
+PHONY: run-local-crawl-rakuten-entrypoint
+run-local-crawl-rakuten-entrypoint:
+	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin crawler-rakuten -- CrawlEntrypoint "" ""
+
+.PHONY: run-dev-crawl-rakuten-entrypoint
+run-dev-crawl-rakuten-entrypoint:
+	aws lambda invoke \
+      	--function-name dev-sale-server-CrawlerRakutenFunction-GYPU6RLBMK5G \
+    	--payload '{"task":"CrawlEntrypoint"}' \
+    	--cli-binary-format raw-in-base64-out \
+    	--cli-read-timeout 0 \
+    	/dev/null
+
 .PHONY: run-local-crawl-rakuten-product-list
 run-local-crawl-rakuten-product-list:
 	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin crawler-rakuten -- CrawlList "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1" ""

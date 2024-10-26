@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  EnvName:
+    Description: environment group (resource group identifier)
+    Type: String
+    AllowedValues:
+      - dev
+      - prod
+  TopicName:
+    Description: topic name
+    Type: String
+
+Resources:
+  EventTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${EnvName}-sale-${TopicName}
