@@ -1,7 +1,7 @@
 use encoding_rs::EUC_JP;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use reqwest::Client;
-use sale::domain::product::{Product, Source};
+use sale::domain::product::{Product, Source, Status};
 use sale::domain::time;
 use sale::errors::Kind::Internal;
 use sale::infra::aws::ddb::cursor::Cursor;
@@ -11,12 +11,18 @@ use std::io::Read;
 use std::time::Duration;
 use tokio::time::sleep;
 
-pub async fn crawl(cursor: Option<Cursor>) -> AppResult<Option<String>> {
+pub async fn crawl(cursor: Option<Cursor>, only_preparing: bool) -> AppResult<Option<String>> {
     let product_repo = di::DB_PRODUCT_REPOSITORY.get().await.clone();
 
-    let products = product_repo
-        .find_by_source(Source::Rakuten, cursor.clone(), Some(10))
-        .await?;
+    let products = if only_preparing {
+        product_repo
+            .find_by_source_status(Source::Rakuten, Status::Prepare, cursor.clone(), Some(10))
+            .await?
+    } else {
+        product_repo
+            .find_by_source(Source::Rakuten, cursor.clone(), Some(10))
+            .await?
+    };
     if products.is_empty() {
         return Ok(None);
     }

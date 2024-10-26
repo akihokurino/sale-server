@@ -2,11 +2,13 @@ use anyhow::anyhow;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use sale::errors::Kind::Internal;
 use sale::infra::aws::ddb::cursor::Cursor;
+use sale::infra::aws::lambda::types::crawler_rakuten::{
+    CrawlDetailRequest, CrawlListRequest, Request, RequestBody,
+};
+use sale::infra::aws::lambda::types::sns::EventData;
 use sale::{di, AppResult};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::env;
-use std::str::FromStr;
 
 mod crawl_product_detail;
 mod crawl_product_list;
@@ -27,17 +29,9 @@ async fn main() -> Result<(), Error> {
         lambda_runtime::run(handler).await?;
     } else {
         let args: Vec<String> = env::args().collect();
-        let task = args.get(1).expect("task is required");
-        let task = Task::from_str(task).expect("invalid task");
-        let url =
-            args.get(2)
-                .map(|v| v.to_string())
-                .and_then(|v| if v.is_empty() { None } else { Some(v) });
-        let cursor =
-            args.get(3)
-                .map(|v| v.to_string())
-                .and_then(|v| if v.is_empty() { None } else { Some(v) });
-        if let Err(err) = handler(Request { task, url, cursor }).await {
+        let json = args.get(1).expect("json params is required");
+        let body: Request = serde_json::from_str(&json).unwrap();
+        if let Err(err) = handler(body).await {
             eprintln!("error: {:?}", err);
             return Err(anyhow!(err).into());
         }
@@ -85,14 +79,14 @@ async fn handler(req: Request) -> AppResult<()> {
     let sns = di::SNS_ADAPTER.get().await.clone();
     let with_lambda = di::ENVIRONMENTS.with_lambda;
 
-    match req.task {
-        Task::CrawlEntrypoint => {
+    match req.body {
+        RequestBody::CrawlEntrypoint => {
             for url in LIST_URLS.into_iter() {
                 sns.publish(
                     Request {
-                        task: Task::CrawlList,
-                        url: Some(url.to_string()),
-                        cursor: None,
+                        body: RequestBody::CrawlList(CrawlListRequest {
+                            url: url.to_string(),
+                        }),
                     },
                     sns_arn.clone(),
                 )
@@ -100,9 +94,8 @@ async fn handler(req: Request) -> AppResult<()> {
             }
             Ok(())
         }
-        Task::CrawlList => {
-            let mut url =
-                url::Url::parse(&req.url.clone().unwrap()).map_err(Internal.from_srcf())?;
+        RequestBody::CrawlList(body) => {
+            let mut url = url::Url::parse(&body.url.clone()).map_err(Internal.from_srcf())?;
             if let Some(next_page) = crawl_product_list::crawl(&url).await? {
                 if !with_lambda {
                     println!("ローカル実行により終了");
@@ -122,9 +115,9 @@ async fn handler(req: Request) -> AppResult<()> {
 
                     sns.publish(
                         Request {
-                            task: Task::CrawlList,
-                            url: Some(url.to_string()),
-                            cursor: None,
+                            body: RequestBody::CrawlList(CrawlListRequest {
+                                url: url.to_string(),
+                            }),
                         },
                         sns_arn.clone(),
                     )
@@ -136,9 +129,12 @@ async fn handler(req: Request) -> AppResult<()> {
 
             Ok(())
         }
-        Task::CrawlDetail => {
-            let next_cursor =
-                crawl_product_detail::crawl(req.cursor.map(|v| Cursor::from(v))).await?;
+        RequestBody::CrawlDetail(body) => {
+            let next_cursor = crawl_product_detail::crawl(
+                body.cursor.map(|v| Cursor::from(v)),
+                body.only_preparing,
+            )
+            .await?;
             if !with_lambda {
                 println!("ローカル実行により終了 next_cursor: {:?}", next_cursor);
                 return Ok(());
@@ -147,9 +143,10 @@ async fn handler(req: Request) -> AppResult<()> {
             if let Some(cursor) = next_cursor {
                 sns.publish(
                     Request {
-                        task: Task::CrawlDetail,
-                        url: None,
-                        cursor: Some(cursor.to_string()),
+                        body: RequestBody::CrawlDetail(CrawlDetailRequest {
+                            cursor: Some(cursor),
+                            only_preparing: body.only_preparing,
+                        }),
                     },
                     sns_arn.clone(),
                 )
@@ -160,45 +157,6 @@ async fn handler(req: Request) -> AppResult<()> {
             Ok(())
         }
     }
-}
-
-#[derive(Serialize, Deserialize)]
-struct EventData {
-    #[serde(rename = "Records")]
-    pub records: Vec<Record>,
-}
-#[derive(Serialize, Deserialize)]
-struct Record {
-    #[serde(rename = "Sns")]
-    pub sns: Sns,
-}
-#[derive(Serialize, Deserialize)]
-struct Sns {
-    #[serde(rename = "Message")]
-    pub message: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Request {
-    pub task: Task,
-    pub url: Option<String>,
-    pub cursor: Option<String>,
-}
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    strum_macros::EnumString,
-    strum_macros::Display,
-    Serialize,
-    Deserialize,
-)]
-pub enum Task {
-    CrawlEntrypoint,
-    CrawlList,
-    CrawlDetail,
 }
 
 const LIST_URLS: [&str; 1] = [

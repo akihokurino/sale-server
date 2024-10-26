@@ -44,33 +44,33 @@ run-local:
 run-dev-crawl-rakuten-entrypoint:
 	aws lambda invoke \
       	--function-name $(CRAWLER_RAKUTEN_LAMBDA_NAME) \
-    	--payload '{"task":"CrawlEntrypoint"}' \
+    	--payload '{"body": "CrawlEntrypoint"}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
     	/dev/null
 
 .PHONY: run-local-crawl-rakuten-product-list
 run-local-crawl-rakuten-product-list:
-	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin crawler-rakuten -- CrawlList "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1" ""
+	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin crawler-rakuten -- '{"body": {"CrawlList": {"url": "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1"}}}'
 
 .PHONY: run-dev-crawl-rakuten-product-list
 run-dev-crawl-rakuten-product-list:
 	aws lambda invoke \
       	--function-name $(CRAWLER_RAKUTEN_LAMBDA_NAME) \
-    	--payload '{"task":"CrawlList", "url": "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1"}' \
+    	--payload '{"body": {"CrawlList": {"url": "https://search.rakuten.co.jp/search/mall/-/551177/?f=13&p=1"}}}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
     	/dev/null
 
 .PHONY: run-local-crawl-rakuten-product-detail
 run-local-crawl-rakuten-product-detail:
-	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin crawler-rakuten -- CrawlDetail "" ""
+	SSM_DOTENV_PARAMETER_NAME=/sale/dev/server/dotenv WITH_LAMBDA=false cargo run --bin crawler-rakuten -- '{"body": {"CrawlDetail": {"only_preparing": false}}}'
 
 .PHONY: run-dev-crawl-rakuten-product-detail
 run-dev-crawl-rakuten-product-detail:
 	aws lambda invoke \
       	--function-name $(CRAWLER_RAKUTEN_LAMBDA_NAME) \
-    	--payload '{"task":"CrawlDetail"}' \
+    	--payload '{"body": {"CrawlDetail": {"only_preparing": true}}}' \
     	--cli-binary-format raw-in-base64-out \
     	--cli-read-timeout 0 \
     	/dev/null

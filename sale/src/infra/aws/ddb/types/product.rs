@@ -80,6 +80,13 @@ impl Into<HashMap<String, AttributeValue>> for Product {
             ("createdAt", Some(self.created_at.into_attr())),
             ("updatedAt", Some(self.updated_at.into_attr())),
             ("glk", Some(Product::type_name().into_attr())),
+            // for index
+            (
+                "source_status",
+                Some(
+                    format!("{}-{}", self.source.to_string(), self.status.to_string()).into_attr(),
+                ),
+            ),
         ]
         .into_iter()
         .flat_map(|(k, v)| v.map(|v| (k.into(), v)))
@@ -97,6 +104,12 @@ impl HasTypeName for Product {
     }
 }
 
+const INDEX_SK_CREATED_AT: SecondaryIndex = SecondaryIndex {
+    name: "sk-createdAt-index",
+    hash_key: "sk",
+    range_key: Some("createdAt"),
+    primary_index: &GENERAL_PRIMARY_INDEX,
+};
 const INDEX_SOURCE_CREATED_AT: SecondaryIndex = SecondaryIndex {
     name: "source-createdAt-index",
     hash_key: "source",
@@ -109,9 +122,34 @@ const INDEX_STATUS_CREATED_AT: SecondaryIndex = SecondaryIndex {
     range_key: Some("createdAt"),
     primary_index: &GENERAL_PRIMARY_INDEX,
 };
+const INDEX_SOURCE_STATUS_CREATED_AT: SecondaryIndex = SecondaryIndex {
+    name: "source_status-createdAt-index",
+    hash_key: "source_status",
+    range_key: Some("createdAt"),
+    primary_index: &GENERAL_PRIMARY_INDEX,
+};
 
 pub type Repository = TableRepository<Product>;
 impl Repository {
+    pub async fn find_all(&self) -> AppResult<Vec<Product>> {
+        let index = &INDEX_SK_CREATED_AT;
+
+        query(
+            self.cli
+                .query()
+                .table_name(self.table_name())
+                .index_name(index.name)
+                .key_conditions(index.hash_key, condition_eq(anchor_attr_value()))
+                .scan_index_forward(false)
+                .with_cursor(None)
+                .map_err(|v| Internal.with(v))?,
+            None,
+            Product::try_from,
+        )
+        .await
+        .map_err(|v| Internal.with(v))
+    }
+
     pub async fn find_by_source(
         &self,
         source: Source,
@@ -150,6 +188,36 @@ impl Repository {
                 .table_name(self.table_name())
                 .index_name(index.name)
                 .key_conditions(index.hash_key, condition_eq(status.to_string().into_attr()))
+                .scan_index_forward(false)
+                .with_cursor(cursor)
+                .map_err(|v| Internal.with(v))?,
+            limit,
+            entity_with_cursor_conv_from(index.evaluate_key_names(), Product::try_from),
+        )
+        .await
+        .map_err(|v| Internal.with(v))
+    }
+
+    pub async fn find_by_source_status(
+        &self,
+        source: Source,
+        status: Status,
+        cursor: Option<Cursor>,
+        limit: Option<i32>,
+    ) -> AppResult<Vec<EntityWithCursor<Product>>> {
+        let index = &INDEX_SOURCE_STATUS_CREATED_AT;
+
+        query(
+            self.cli
+                .query()
+                .table_name(self.table_name())
+                .index_name(index.name)
+                .key_conditions(
+                    index.hash_key,
+                    condition_eq(
+                        format!("{}-{}", source.to_string(), status.to_string()).into_attr(),
+                    ),
+                )
                 .scan_index_forward(false)
                 .with_cursor(cursor)
                 .map_err(|v| Internal.with(v))?,

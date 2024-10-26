@@ -66,6 +66,8 @@ Resources:
           AttributeType: S
         - AttributeName: status
           AttributeType: S
+        - AttributeName: source_status
+          AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
       BillingMode: PAY_PER_REQUEST
@@ -98,6 +100,14 @@ Resources:
         - IndexName: status-createdAt-index
           KeySchema:
             - AttributeName: status
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: source_status-createdAt-index
+          KeySchema:
+            - AttributeName: source_status
               KeyType: HASH
             - AttributeName: createdAt
               KeyType: RANGE

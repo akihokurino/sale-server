@@ -60,6 +60,7 @@ impl<E: HasTableName> TableRepository<E> {
 
 // https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/Query.Pagination.html
 // データ量によって分割した結果が返ってくるので、limitに達していないがhas_nextがtrueになることがある
+#[allow(unused)]
 async fn query<T>(
     q: QueryFluentBuilder,
     limit: Option<i32>,
@@ -92,6 +93,7 @@ async fn query<T>(
 
 // https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/Query.Pagination.html
 // データ量によって分割した結果が返ってくるので、whileでhas_nextを見る必要がある
+#[allow(unused)]
 async fn count(q: QueryFluentBuilder) -> Result<usize, String> {
     let mut q = q.select(Select::Count);
 
@@ -106,6 +108,7 @@ async fn count(q: QueryFluentBuilder) -> Result<usize, String> {
     Ok(count)
 }
 
+#[allow(unused)]
 async fn batch_get<T>(
     cli: &aws_sdk_dynamodb::Client,
     table_name: impl Into<String>,

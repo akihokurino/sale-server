@@ -18,6 +18,7 @@ async fn main() -> std::io::Result<()> {
 
     let envs = di::ENVIRONMENTS.clone();
     let service_http_handler = graphql::service::HttpHandler::new().await;
+    let master_http_handler = graphql::master::HttpHandler::new().await;
     let is_prod = envs.is_prod();
 
     let app_factory = move || {
@@ -31,16 +32,27 @@ async fn main() -> std::io::Result<()> {
                     .supports_credentials(),
             )
             .app_data(Data::new(service_http_handler.clone()))
+            .app_data(Data::new(master_http_handler.clone()))
             .service(
                 web::resource("/service/graphql")
                     .guard(guard::Post())
                     .to(service_graphql_route),
+            )
+            .service(
+                web::resource("/master/graphql")
+                    .guard(guard::Post())
+                    .to(master_graphql_route),
             );
         if !is_prod {
             app = app.service(
                 web::resource("/service/playground")
                     .guard(guard::Get())
                     .to(|| async { handle_playground("service") }),
+            );
+            app = app.service(
+                web::resource("/master/playground")
+                    .guard(guard::Get())
+                    .to(|| async { handle_playground("master") }),
             );
         }
 
@@ -62,6 +74,14 @@ async fn main() -> std::io::Result<()> {
 
 async fn service_graphql_route(
     handler: Data<graphql::service::HttpHandler>,
+    http_req: HttpRequest,
+    gql_req: GraphQLRequest,
+) -> GraphQLResponse {
+    handler.handle(http_req, gql_req).await
+}
+
+async fn master_graphql_route(
+    handler: Data<graphql::master::HttpHandler>,
     http_req: HttpRequest,
     gql_req: GraphQLRequest,
 ) -> GraphQLResponse {

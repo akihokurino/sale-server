@@ -1,3 +1,5 @@
+pub mod types;
+
 use crate::errors::AppError;
 use crate::errors::Kind::Internal;
 use crate::AppResult;
