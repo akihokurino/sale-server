@@ -19,13 +19,7 @@ pub struct Product {
     pub updated_at: LocalDateTime,
 }
 impl Product {
-    pub fn new(
-        id: Id,
-        source: Source,
-        detail_url: url::Url,
-        points: Option<String>,
-        now: LocalDateTime,
-    ) -> Self {
+    pub fn new(id: Id, source: Source, detail_url: url::Url, now: LocalDateTime) -> Self {
         Self {
             id,
             source,
@@ -37,7 +31,7 @@ impl Product {
             actual_price: None,
             retail_off: None,
             breadcrumb: vec![],
-            points,
+            points: None,
             created_at: now,
             updated_at: now,
         }
@@ -51,6 +45,7 @@ impl Product {
         actual_price: Option<String>,
         retail_off: Option<String>,
         breadcrumb: Vec<String>,
+        points: Option<String>,
         now: LocalDateTime,
     ) -> Self {
         Self {
@@ -61,6 +56,7 @@ impl Product {
             actual_price,
             retail_off,
             breadcrumb,
+            points,
             updated_at: now,
             ..self
         }

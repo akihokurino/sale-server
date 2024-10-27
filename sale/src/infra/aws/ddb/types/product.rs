@@ -47,7 +47,7 @@ impl TryFrom<HashMap<String, AttributeValue>> for Product {
                 .map(|v| v.to_s_list())
                 .transpose()?
                 .unwrap_or_default(),
-            points: Some(v.remove("points").must_present()?.to_s()?),
+            points: v.remove("points").map(|v| v.to_s()).transpose()?,
             created_at: v.remove("createdAt").must_present()?.to_date_time()?,
             updated_at: v.remove("updatedAt").must_present()?.to_date_time()?,
         })

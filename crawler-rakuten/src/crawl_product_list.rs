@@ -59,18 +59,19 @@ async fn collect(url: &url::Url) -> AppResult<Vec<domain::product::Product>> {
 
     let mut products: Vec<domain::product::Product> = vec![];
     for element in document.select(&item_selector) {
+        // ID
         let item_id = element
             .value()
             .attr("data-id")
             .ok_or(Internal.with("data-idが見つかりませんでした"))?
             .to_string();
-
         let shop_id = element
             .value()
             .attr("data-shop-id")
             .ok_or(Internal.with("data-shop-idが見つかりませんでした"))?
             .to_string();
 
+        // 詳細URL
         let e_ref = element
             .select(&url_selector)
             .next()
@@ -82,6 +83,7 @@ async fn collect(url: &url::Url) -> AppResult<Vec<domain::product::Product>> {
             .to_string();
         let url = url::Url::parse(&url).map_err(Internal.from_srcf())?;
 
+        // ポイント(詳細では静的に取れない)
         let e_ref = element
             .select(&points_selector)
             .next()
@@ -89,10 +91,19 @@ async fn collect(url: &url::Url) -> AppResult<Vec<domain::product::Product>> {
         let points = e_ref.text().collect::<Vec<_>>().concat().trim().to_string();
 
         let source = domain::product::Source::Rakuten;
-        products.push(domain::product::Product::new(
+        let product = domain::product::Product::new(
             domain::product::Id::new(format!("{}-{}-{}", source, shop_id, item_id)),
             source,
             url,
+            time::now(),
+        );
+        products.push(product.update(
+            None,
+            vec![],
+            None,
+            None,
+            None,
+            vec![],
             Some(points),
             time::now(),
         ));

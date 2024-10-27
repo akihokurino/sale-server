@@ -78,7 +78,7 @@ fn detect_brandavenue(url: url::Url) -> bool {
         })
 }
 
-// "https://brandavenue.rakuten.co.jp/item/JD3262"
+// https://brandavenue.rakuten.co.jp/item/JD3262
 async fn collect_brandavenue(product: Product) -> AppResult<Product> {
     println!("[brandavenue] 商品詳細URL: {}", product.detail_url.as_str());
     let body = Client::new()
@@ -95,6 +95,7 @@ async fn collect_brandavenue(product: Product) -> AppResult<Product> {
     // file.write_all(body.as_bytes())
     //     .map_err(Internal.from_srcf())?;
 
+    // タイトル
     let selector = Selector::parse(".item-name").unwrap();
     let title = document
         .select(&selector)
@@ -106,6 +107,7 @@ async fn collect_brandavenue(product: Product) -> AppResult<Product> {
         .trim()
         .to_string();
 
+    // 画像
     let mut image_urls: Vec<url::Url> = vec![];
     let selector = Selector::parse("ul.item-images-list li.item-images-item img").unwrap();
     for element in document.select(&selector) {
@@ -120,12 +122,14 @@ async fn collect_brandavenue(product: Product) -> AppResult<Product> {
         image_urls.push(url::Url::parse(image_url.as_str()).map_err(Internal.from_srcf())?);
     }
 
+    // 定価
     let selector = Selector::parse(".item-price-retail-value").unwrap();
     let retail_price = document
         .select(&selector)
         .next()
         .map(|v| v.text().collect::<Vec<_>>().concat().trim().to_string());
 
+    // 値段
     let selector = Selector::parse(".item-price-actual-value").unwrap();
     let actual_price = document
         .select(&selector)
@@ -137,12 +141,17 @@ async fn collect_brandavenue(product: Product) -> AppResult<Product> {
         .trim()
         .to_string();
 
+    // 割引率
     let selector = Selector::parse(".item-price-retail-off").unwrap();
     let retail_off = document
         .select(&selector)
         .next()
         .map(|v| v.text().collect::<Vec<_>>().concat().trim().to_string());
 
+    // ポイント
+    // JSで動的に生成されているため、取得できない
+
+    // パンクズ
     let mut breadcrumb: Vec<String> = vec![];
     let selector = Selector::parse("ul.breadcrumb-list li.breadcrumb-item a").unwrap();
     for element in document.select(&selector) {
@@ -155,17 +164,19 @@ async fn collect_brandavenue(product: Product) -> AppResult<Product> {
         breadcrumb.push(v);
     }
 
-    Ok(product.update(
+    Ok(product.clone().update(
         Some(title),
         image_urls,
         retail_price,
         Some(actual_price),
         retail_off,
         breadcrumb,
+        product.points,
         time::now(),
     ))
 }
 
+// https://item.rakuten.co.jp/tab11/john013/
 async fn collect(product: Product) -> AppResult<Product> {
     println!("商品詳細URL: {}", product.detail_url.as_str());
     let response = Client::new()
@@ -185,6 +196,7 @@ async fn collect(product: Product) -> AppResult<Product> {
     // file.write_all(body.as_bytes())
     //     .map_err(Internal.from_srcf())?;
 
+    // タイトル
     let selector = Selector::parse(".normal_reserve_item_name").unwrap();
     let title = document
         .select(&selector)
@@ -196,6 +208,7 @@ async fn collect(product: Product) -> AppResult<Product> {
         .trim()
         .to_string();
 
+    // 画像
     let mut image_urls: Vec<url::Url> = vec![];
     let selector = Selector::parse(".sale_desc img").unwrap();
     for element in document.select(&selector) {
@@ -210,6 +223,9 @@ async fn collect(product: Product) -> AppResult<Product> {
         image_urls.push(url::Url::parse(image_url.as_str()).map_err(Internal.from_srcf())?);
     }
 
+    // 定価、割引率は見当たらない
+
+    // 値段
     let selector = Selector::parse("#priceCalculationConfig").unwrap();
     let actual_price = document
         .select(&selector)
@@ -220,6 +236,10 @@ async fn collect(product: Product) -> AppResult<Product> {
         .ok_or(Internal.with("値段が見つかりませんでした"))?
         .to_string();
 
+    // ポイント
+    // JSで動的に生成されているため、取得できない
+
+    // パンクズ
     let mut breadcrumb: Vec<String> = vec![];
     let selector = Selector::parse(".sdtext a").unwrap();
     for element in document.select(&selector) {
@@ -232,13 +252,14 @@ async fn collect(product: Product) -> AppResult<Product> {
         breadcrumb.push(v);
     }
 
-    Ok(product.update(
+    Ok(product.clone().update(
         Some(title),
         image_urls,
         None,
         Some(actual_price),
         None,
         breadcrumb,
+        product.points,
         time::now(),
     ))
 }

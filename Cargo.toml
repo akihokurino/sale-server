@@ -4,4 +4,5 @@ members = [
     "crawler-rakuten",
     "sale",
     "sale-api",
+    "scheduled-crawler",
 ]

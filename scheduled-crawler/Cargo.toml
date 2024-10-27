@@ -1,0 +1,15 @@
+[package]
+name = "scheduled-crawler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sale = { path = "../sale" }
+tokio = { version = "1", features = ["full"] }
+lambda_runtime = "0.13.0"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = { version = "1.0.128" }
+derive_more = { version = "1", features = ["full"] }
+strum = "0.26.1"
+strum_macros = "0.26.4"
+anyhow = "1.0.89"

@@ -9,7 +9,7 @@ ifeq ($(USE_DOCKER), 1)
 endif
 BIN_OUTPUT_DIR := target/x86_64-unknown-linux-musl/release
 SRC_FILES := $(shell find . -type f | grep -v '^\./target' | grep -v '/\.')
-DEPLOY_CRATES := sale-api crawler-rakuten
+DEPLOY_CRATES := sale-api crawler-rakuten scheduled-crawler
 $(BIN_OUTPUT_DIR)/%: $(SRC_FILES)
 	$(DOCKER_CMD_BASE) cargo build --release --bin $(lastword $(subst /, ,$@)) --target x86_64-unknown-linux-musl
 	if [ "$(STRIP)" = "1" ]; then strip $@; fi
@@ -19,6 +19,9 @@ build-ApiFunction: $(BIN_OUTPUT_DIR)/sale-api
 	cp $< $(ARTIFACTS_DIR)/bootstrap
 
 build-CrawlerRakutenFunction: $(BIN_OUTPUT_DIR)/crawler-rakuten
+	cp $< $(ARTIFACTS_DIR)/bootstrap
+
+build-ScheduledCrawlerFunction: $(BIN_OUTPUT_DIR)/scheduled-crawler
 	cp $< $(ARTIFACTS_DIR)/bootstrap
 
 .PHONY: debug-build
