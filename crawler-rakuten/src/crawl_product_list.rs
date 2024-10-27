@@ -14,7 +14,18 @@ pub async fn crawl(url: &url::Url) -> AppResult<Option<u32>> {
         return Ok(None);
     }
     for product in products {
-        if let Some(_) = product_repo.get(&product.id).await.not_found_to_none()? {
+        if let Some(current) = product_repo.get(&product.id).await.not_found_to_none()? {
+            let current = current.clone().update(
+                current.title,
+                current.image_urls,
+                current.retail_price,
+                current.actual_price,
+                current.retail_off,
+                current.breadcrumb,
+                product.points,
+                time::now(),
+            );
+            product_repo.put(current.clone()).await?;
             continue;
         }
         product_repo.put(product.clone()).await?;
